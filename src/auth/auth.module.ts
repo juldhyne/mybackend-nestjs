@@ -4,11 +4,12 @@ import { LocalStrategy } from './local.strategy.js';
 import { UsersModule } from '../users/users.module.js';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
-import { jwtConstants } from './constants.js';
 import { JwtStrategy } from './jwt.strategy.js';
 import { AuthController } from './auth.controller.js';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
+import { ConfigService } from '@nestjs/config';
+import { RolesGuard } from './roles.guard.js';
 
 @Module({
   imports: [
@@ -16,9 +17,14 @@ import { JwtAuthGuard } from './jwt-auth.guard.js';
     PassportModule.register({
       session: false,
     }),
-    JwtModule.register({
-      secret: jwtConstants.secret,
-      signOptions: { expiresIn: '60s' },
+    JwtModule.registerAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.getOrThrow<string>('JWT_SECRET'),
+        signOptions: {
+          expiresIn: '15Min',
+        },
+      }),
     }), // Configure nest jwtToken module
   ],
   providers: [
@@ -28,6 +34,10 @@ import { JwtAuthGuard } from './jwt-auth.guard.js';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
     },
   ],
   exports: [AuthService],
